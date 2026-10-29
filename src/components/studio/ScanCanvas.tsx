@@ -4,6 +4,7 @@ import { shapeToPolygon } from "../../lib/geometry";
 
 interface Props {
   shapes: Shape[];
+  contours?: Point[][];
   toolpath: Toolpath;
   fieldSizeMm: number;
   selectedId: string | null;
@@ -14,10 +15,11 @@ interface Props {
   showJumps: boolean;
 }
 
-const SIZE = 560;
+const SIZE = 580;
 
 export default function ScanCanvas({
   shapes,
+  contours,
   toolpath,
   fieldSizeMm,
   selectedId,
@@ -48,15 +50,16 @@ export default function ScanCanvas({
 
     draw(ctx);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shapes, toolpath, fieldSizeMm, selectedId, progress, showHatch, showJumps]);
+  }, [shapes, contours, toolpath, fieldSizeMm, selectedId, progress, showHatch, showJumps]);
 
   function draw(ctx: CanvasRenderingContext2D) {
     ctx.clearRect(0, 0, SIZE, SIZE);
+    // Dark chamber background
     ctx.fillStyle = "#070b12";
     ctx.fillRect(0, 0, SIZE, SIZE);
 
-    // grid
-    ctx.strokeStyle = "rgba(148,163,184,0.12)";
+    // Build platform grid
+    ctx.strokeStyle = "rgba(148,163,184,0.1)";
     ctx.lineWidth = 1;
     const step = 10; // mm
     for (let x = -fieldSizeMm / 2; x <= fieldSizeMm / 2; x += step) {
@@ -76,79 +79,113 @@ export default function ScanCanvas({
       ctx.stroke();
     }
 
-    // field boundary (circular effective scan area) + bounding square
+    // Field boundary (circular effective galvo scan area)
     ctx.strokeStyle = "rgba(34,211,238,0.35)";
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.arc(SIZE / 2, SIZE / 2, (fieldSizeMm / 2) * scale, 0, Math.PI * 2);
     ctx.stroke();
-    ctx.strokeStyle = "rgba(148,163,184,0.25)";
-    ctx.strokeRect(toPx({ x: -fieldSizeMm / 2, y: fieldSizeMm / 2 }).x, toPx({ x: -fieldSizeMm / 2, y: fieldSizeMm / 2 }).y, fieldSizeMm * scale, fieldSizeMm * scale);
 
-    // center crosshair
+    // Square build envelope
+    ctx.strokeStyle = "rgba(148,163,184,0.2)";
+    ctx.strokeRect(
+      toPx({ x: -fieldSizeMm / 2, y: fieldSizeMm / 2 }).x,
+      toPx({ x: -fieldSizeMm / 2, y: fieldSizeMm / 2 }).y,
+      fieldSizeMm * scale,
+      fieldSizeMm * scale
+    );
+
+    // Center optical zero crosshair
     ctx.strokeStyle = "rgba(148,163,184,0.4)";
     ctx.beginPath();
-    ctx.moveTo(SIZE / 2 - 6, SIZE / 2);
-    ctx.lineTo(SIZE / 2 + 6, SIZE / 2);
-    ctx.moveTo(SIZE / 2, SIZE / 2 - 6);
-    ctx.lineTo(SIZE / 2, SIZE / 2 + 6);
+    ctx.moveTo(SIZE / 2 - 8, SIZE / 2);
+    ctx.lineTo(SIZE / 2 + 8, SIZE / 2);
+    ctx.moveTo(SIZE / 2, SIZE / 2 - 8);
+    ctx.lineTo(SIZE / 2, SIZE / 2 + 8);
     ctx.stroke();
 
-    // shapes (cured resin preview)
+    // 1. Procedural Shapes (if any)
     for (const shape of shapes) {
       const poly = shapeToPolygon(shape).map(toPx);
       ctx.beginPath();
       poly.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
       ctx.closePath();
-      ctx.fillStyle = shape.id === selectedId ? "rgba(103,232,249,0.18)" : "rgba(103,232,249,0.08)";
+      ctx.fillStyle = shape.id === selectedId ? "rgba(103,232,249,0.18)" : "rgba(103,232,249,0.06)";
       ctx.fill();
-      ctx.strokeStyle = shape.id === selectedId ? "#67e8f9" : "rgba(103,232,249,0.4)";
+      ctx.strokeStyle = shape.id === selectedId ? "#67e8f9" : "rgba(103,232,249,0.35)";
       ctx.lineWidth = shape.id === selectedId ? 2 : 1;
       ctx.stroke();
     }
 
-    // toolpath
+    // 2. CAD Sliced Contours (metal layer profile)
+    if (contours && contours.length > 0) {
+      for (const poly of contours) {
+        if (poly.length < 3) continue;
+        const pts = poly.map(toPx);
+        ctx.beginPath();
+        pts.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+        ctx.closePath();
+        ctx.fillStyle = "rgba(14, 165, 233, 0.08)";
+        ctx.fill();
+        ctx.strokeStyle = "rgba(56, 189, 248, 0.5)";
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+      }
+    }
+
+    // 3. Toolpath Scan Simulation
     const totalLen = pathLength(toolpath);
     const limit = progress === null ? Infinity : progress * totalLen;
     let acc = 0;
     let lastPt: Point | null = null;
+    let isCurrentJump = false;
 
     for (const seg of toolpath.segments) {
       for (let i = 0; i + 1 < seg.points.length; i++) {
         const a = seg.points[i];
         const b = seg.points[i + 1];
         const segLen = Math.hypot(a.x - b.x, a.y - b.y);
+
         if (seg.isJump && !showJumps) {
           acc += segLen;
           lastPt = b;
           continue;
         }
+
         let drawA = a;
         let drawB = b;
         let partial = false;
+
         if (acc + segLen > limit) {
           const t = Math.max(0, (limit - acc) / segLen);
           drawB = { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
           partial = true;
         }
+
         if (acc < limit) {
           const pA = toPx(drawA);
           const pB = toPx(drawB);
           ctx.beginPath();
           ctx.moveTo(pA.x, pA.y);
           ctx.lineTo(pB.x, pB.y);
+
           if (seg.isJump) {
-            ctx.strokeStyle = "rgba(234,179,8,0.55)";
-            ctx.setLineDash([4, 4]);
+            // Galvo mirror repositioning jump (laser off)
+            ctx.strokeStyle = "rgba(234, 179, 8, 0.5)";
+            ctx.setLineDash([3, 4]);
             ctx.lineWidth = 1;
+            isCurrentJump = true;
           } else {
+            // Laser sintering / melting vector
             ctx.setLineDash([]);
-            ctx.strokeStyle = "#fb7185";
-            ctx.lineWidth = 1.4;
+            ctx.strokeStyle = "#f43f5e"; // Fiery laser melt track
+            ctx.lineWidth = 1.5;
+            isCurrentJump = false;
           }
           ctx.stroke();
           ctx.setLineDash([]);
         }
+
         acc += segLen;
         lastPt = partial ? drawB : b;
         if (partial) break;
@@ -156,20 +193,36 @@ export default function ScanCanvas({
       if (acc >= limit) break;
     }
 
-    // laser spot marker during animation
+    // 4. Laser Spot & Melt Pool Marker
     if (progress !== null && lastPt) {
       const p = toPx(lastPt);
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
-      ctx.fillStyle = "#fde047";
-      ctx.shadowColor = "#fde047";
-      ctx.shadowBlur = 12;
-      ctx.fill();
-      ctx.shadowBlur = 0;
-    }
 
-    if (!showHatch) {
-      // overlay note handled by parent toggle (hatch filtered before passed in for perf-simple approach not needed here)
+      if (!isCurrentJump) {
+        // High-power laser melt pool corona (10 kW focused beam)
+        const radGlow = ctx.createRadialGradient(p.x, p.y, 1, p.x, p.y, 14);
+        radGlow.addColorStop(0, "rgba(254, 240, 138, 0.95)"); // Intense white-yellow core
+        radGlow.addColorStop(0.35, "rgba(249, 115, 22, 0.7)"); // Orange molten transition
+        radGlow.addColorStop(0.7, "rgba(239, 68, 68, 0.3)");  // Outer thermal plume
+        radGlow.addColorStop(1, "rgba(239, 68, 68, 0)");
+
+        ctx.fillStyle = radGlow;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 14, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Focused spot center
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+        ctx.fillStyle = "#ffffff";
+        ctx.fill();
+      } else {
+        // Laser OFF - Galvo mirror positioning reticle
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+        ctx.strokeStyle = "#eab308";
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
     }
   }
 
@@ -197,7 +250,7 @@ export default function ScanCanvas({
   return (
     <canvas
       ref={canvasRef}
-      className="w-full cursor-crosshair touch-none rounded-xl border border-white/10"
+      className="w-full max-w-[580px] cursor-crosshair touch-none rounded-xl border border-white/10 shadow-2xl"
       onPointerDown={(e) => {
         const rect = e.currentTarget.getBoundingClientRect();
         const x = ((e.clientX - rect.left) / rect.width) * SIZE;

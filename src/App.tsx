@@ -1,17 +1,19 @@
 import { useState } from "react";
-import { BookOpenText, Crosshair, LayoutGrid, Radar, Settings2 } from "lucide-react";
+import { BookOpenText, Boxes, Crosshair, LayoutGrid, Radar, Settings2 } from "lucide-react";
 import { GalvoProvider } from "./context/GalvoContext";
 import OverviewPage from "./components/OverviewPage";
 import StudioPage from "./components/StudioPage";
 import CalibrationPage from "./components/CalibrationPage";
 import ExportPage from "./components/ExportPage";
+import HardwarePage from "./components/HardwarePage";
 import { cn } from "./utils/cn";
 
-type Tab = "overview" | "studio" | "calibration" | "export";
+type Tab = "overview" | "studio" | "hardware" | "calibration" | "export";
 
 const TABS: { id: Tab; label: string; icon: typeof BookOpenText }[] = [
   { id: "overview", label: "Overview", icon: BookOpenText },
   { id: "studio", label: "Toolpath Studio", icon: LayoutGrid },
+  { id: "hardware", label: "3D Machine & Hardware", icon: Boxes },
   { id: "calibration", label: "Calibration", icon: Crosshair },
   { id: "export", label: "Export / Control", icon: Settings2 },
 ];
@@ -33,7 +35,7 @@ export default function App() {
                   GalvoForge
                 </h1>
                 <p className="text-[11px] leading-tight text-slate-400 sm:text-xs">
-                  Galvanometer Laser-SLA Toolpath &amp; Control Suite
+                  Galvanometer 3D Metal Laser Printing &amp; SLM Slicing Studio
                 </p>
               </div>
             </div>
@@ -73,6 +75,7 @@ export default function App() {
         <main className="mx-auto max-w-[1500px] px-4 pb-16 pt-6 sm:px-6">
           {tab === "overview" && <OverviewPage onLaunch={() => setTab("studio")} />}
           {tab === "studio" && <StudioPage />}
+          {tab === "hardware" && <HardwarePage />}
           {tab === "calibration" && <CalibrationPage />}
           {tab === "export" && <ExportPage />}
         </main>

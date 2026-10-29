@@ -1,12 +1,18 @@
 import type { Layer, ProcessSettings, Toolpath } from "./types";
+import { defaultGalvoKinematics } from "./galvoKinematics";
 
-/** Produce a human-readable, galvo-controller-style command stream for one layer's toolpath.
- * This mirrors the ASCII command style used by many open-source galvo/laser controllers
- * (GRBL-derived "G1/G0" motion with S = laser power and F = feedrate), which is the most
- * common interchange format for DIY XY2-100 galvo boards that expose a serial command layer. */
+/**
+ * Produce a 3-axis galvo controller command stream with dynamic linear fiber focus (X, Y, Z):
+ * - X: Galvo Mirror X position (mm)
+ * - Y: Galvo Mirror Y position (mm)
+ * - Z: Linear Fiber-In translation stage position (mm) for dynamic focus & field curvature elimination
+ * - F: Feedrate / scan speed (mm/s)
+ * - S: Laser power percentage
+ */
 export function toolpathToCommands(layer: Layer, toolpath: Toolpath, settings: ProcessSettings): string[] {
   const lines: string[] = [];
-  lines.push(`; --- Layer ${layer.id} | Z=${layer.z.toFixed(3)}mm | layer height ${settings.layerHeightMicron}um ---`);
+  lines.push(`; --- 3-Axis Galvano Print: Layer ${layer.id} | Z_bed=${layer.z.toFixed(3)}mm | Height ${settings.layerHeightMicron}um ---`);
+  lines.push(`; Kinematics: X=Galvo-X, Y=Galvo-Y, Z=Linear-Fiber-Focus (Dynamic VCM)`);
   lines.push(`M3 S0 ; laser armed, power off`);
   lines.push(`G4 P${(settings.laserOnDelayUs / 1000).toFixed(3)} ; laser warm-up delay`);
 
@@ -14,9 +20,12 @@ export function toolpathToCommands(layer: Layer, toolpath: Toolpath, settings: P
   for (const seg of toolpath.segments) {
     for (let i = 0; i < seg.points.length; i++) {
       const p = seg.points[i];
+      const axisState = defaultGalvoKinematics.xyToMirrorAngles(p.x, p.y, layer.z);
+      const zFocus = axisState.zLinearMm.toFixed(4);
+
       if (i === 0) {
         if (seg.isJump) {
-          lines.push(`G0 X${p.x.toFixed(4)} Y${p.y.toFixed(4)} F${settings.jumpSpeedMms}`);
+          lines.push(`G0 X${p.x.toFixed(4)} Y${p.y.toFixed(4)} Z${zFocus} F${settings.jumpSpeedMms}`);
           lastWasJump = true;
         }
         continue;
@@ -26,9 +35,9 @@ export function toolpathToCommands(layer: Layer, toolpath: Toolpath, settings: P
         lastWasJump = false;
       }
       if (seg.isJump) {
-        lines.push(`G0 X${p.x.toFixed(4)} Y${p.y.toFixed(4)} F${settings.jumpSpeedMms}`);
+        lines.push(`G0 X${p.x.toFixed(4)} Y${p.y.toFixed(4)} Z${zFocus} F${settings.jumpSpeedMms}`);
       } else {
-        lines.push(`G1 X${p.x.toFixed(4)} Y${p.y.toFixed(4)} F${settings.scanSpeedMms}`);
+        lines.push(`G1 X${p.x.toFixed(4)} Y${p.y.toFixed(4)} Z${zFocus} F${settings.scanSpeedMms}`);
       }
     }
     if (!seg.isJump) {
@@ -40,7 +49,7 @@ export function toolpathToCommands(layer: Layer, toolpath: Toolpath, settings: P
 
   lines.push(`M5 ; ensure laser off`);
   lines.push(`G4 P${(settings.markDelayUs / 1000).toFixed(3)} ; layer settle delay`);
-  lines.push(`; Z-stage: lift / dip sequence for recoat happens on controller side`);
+  lines.push(`; Z-stage: powder recoat sweep executed by elevator controller`);
   return lines;
 }
 
