@@ -11,7 +11,7 @@ async function getOcct() {
     occtPromise = occtFn({
       locateFile: (name: string) => {
         if (name.endsWith(".wasm")) {
-          return "/occt-import-js.wasm";
+          const base = import.meta.env.BASE_URL || "./"; return base.endsWith("/") ? `${base}occt-import-js.wasm` : `${base}/occt-import-js.wasm`;
         }
         return name;
       },

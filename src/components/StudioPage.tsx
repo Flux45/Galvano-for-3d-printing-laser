@@ -206,14 +206,14 @@ export default function StudioPage() {
 
           <span className="text-xs text-slate-400">or load sample:</span>
           <button
-            onClick={() => loadSampleCad("/samples/cube.stp", "cube.stp")}
+            onClick={() => { const b = import.meta.env.BASE_URL || "./"; const p = b.endsWith("/") ? b : b + "/"; loadSampleCad(p + "samples/cube.stp", "cube.stp"); }}
             disabled={isLoadingCad}
             className="rounded-lg border border-white/15 bg-white/5 px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:border-cyan-400/50 hover:text-cyan-300"
           >
             Basic Cube (STEP)
           </button>
           <button
-            onClick={() => loadSampleCad("/samples/rounded-cube.step", "rounded-cube.step")}
+            onClick={() => { const b = import.meta.env.BASE_URL || "./"; const p = b.endsWith("/") ? b : b + "/"; loadSampleCad(p + "samples/rounded-cube.step", "rounded-cube.step"); }}
             disabled={isLoadingCad}
             className="rounded-lg border border-white/15 bg-white/5 px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:border-cyan-400/50 hover:text-cyan-300"
           >
