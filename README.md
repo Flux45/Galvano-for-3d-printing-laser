@@ -32,8 +32,18 @@ Run directly in your browser without installation:
 - Real-time **Linear Energy Density** ($P/v = 2.0\,\text{J/mm}$) and **Volumetric Energy Density** ($P / (v \cdot h \cdot t)$) calculations.
 - Rotating cross-hatch scan strategy ($67^\circ$ inter-layer rotation to minimize residual thermal stresses).
 
-### 4. Interactive 3D Machine Assembly & Hardware BOM
-- Full 3D model of the machine:
+### 4. Interactive Machine Anatomy Explainer (wheresryan22/anatomy pattern)
+- **Cutaway X-Ray Mechanical Inspection**: 3D interactive model showing internal optical collimation, voice-coil linear slide, dual galvanometer mirror pivots, and powder bed mechanics.
+- **Physical Callouts & Governing Laws**: Hotspots positioned on each physical assembly with live KaTeX mathematical formulas:
+  - Rayleigh range $z_R = \frac{\pi w_0^2}{\lambda}$ and Gaussian beam divergence
+  - Moving-magnet galvanometer torque & inertia
+  - Flat-field tangent optical steering $x = L_0 \tan(2\theta_x)$
+  - Volumetric energy density $E_v = \frac{P}{v \cdot h \cdot t}$
+- **Step-by-Step SLM Process Sequence**: Interactive automated playback through the 5 phases of metal powder melting.
+- **Live Physics Lab**: Interactive dials for Laser Power, Scan Velocity, and Scan Radius with instant focal shift ($\Delta z$) and energy density readouts.
+
+### 5. Interactive 3D Machine Assembly & Hardware BOM
+- Full 3D model of the machine with independent subsystems:
   - 3D Galvo Scanhead & Dual Mirror Servos
   - Dynamic Linear Focus Fiber-In Carriage (Voice Coil / Stepper)
   - Build Platform Piston Elevator (NEMA 23 + SFU1204 Ball Screw)
@@ -43,7 +53,7 @@ Run directly in your browser without installation:
 - **Exploded View Slider (0% to 100%)**: Space out every assembly in 3D to inspect internal bearings, rails, and motors.
 - **Electrical Pinout Reference**: Complete wiring assignments for BigTreeTech Octopus Pro, standard XY2-100/analog galvo drivers, and dual $\pm 15\,\text{V}$ / $+24\,\text{V}$ power supplies.
 
-### 5. G-Code Generation & Web Serial Streaming
+### 6. G-Code Generation & Web Serial Streaming
 - Generates synchronized galvo motion G-code with dynamic $Z$-compensation commands.
 - Direct hardware control via Chromium Web Serial API.
 

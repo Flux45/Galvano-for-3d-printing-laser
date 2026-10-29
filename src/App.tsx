@@ -1,19 +1,21 @@
 import { useState } from "react";
-import { BookOpenText, Boxes, Crosshair, LayoutGrid, Radar, Settings2 } from "lucide-react";
+import { Activity, BookOpenText, Boxes, Crosshair, LayoutGrid, Radar, Settings2 } from "lucide-react";
 import { GalvoProvider } from "./context/GalvoContext";
 import OverviewPage from "./components/OverviewPage";
 import StudioPage from "./components/StudioPage";
 import CalibrationPage from "./components/CalibrationPage";
 import ExportPage from "./components/ExportPage";
 import HardwarePage from "./components/HardwarePage";
+import AnatomyPage from "./components/AnatomyPage";
 import { cn } from "./utils/cn";
 
-type Tab = "overview" | "studio" | "hardware" | "calibration" | "export";
+type Tab = "overview" | "studio" | "anatomy" | "hardware" | "calibration" | "export";
 
 const TABS: { id: Tab; label: string; icon: typeof BookOpenText }[] = [
   { id: "overview", label: "Overview", icon: BookOpenText },
   { id: "studio", label: "Toolpath Studio", icon: LayoutGrid },
-  { id: "hardware", label: "3D Machine & Hardware", icon: Boxes },
+  { id: "anatomy", label: "Machine Anatomy", icon: Activity },
+  { id: "hardware", label: "3D Hardware BOM", icon: Boxes },
   { id: "calibration", label: "Calibration", icon: Crosshair },
   { id: "export", label: "Export / Control", icon: Settings2 },
 ];
@@ -75,6 +77,7 @@ export default function App() {
         <main className="mx-auto max-w-[1500px] px-4 pb-16 pt-6 sm:px-6">
           {tab === "overview" && <OverviewPage onLaunch={() => setTab("studio")} />}
           {tab === "studio" && <StudioPage />}
+          {tab === "anatomy" && <AnatomyPage />}
           {tab === "hardware" && <HardwarePage />}
           {tab === "calibration" && <CalibrationPage />}
           {tab === "export" && <ExportPage />}
