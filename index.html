@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      (function () {
+        try {
+          var currentFetch = window.fetch ? window.fetch.bind(window) : undefined;
+          Object.defineProperty(window, "fetch", {
+            get: function () {
+              return currentFetch;
+            },
+            set: function (nextFetch) {
+              if (typeof nextFetch === "function") {
+                currentFetch = nextFetch;
+              }
+            },
+            configurable: true,
+            enumerable: true,
+          });
+        } catch (e) {
+          // Ignore if non-configurable
+        }
+      })();
+    </script>
+    <title>GalvoProto CAD — Low-Cost Arduino & Stepper Galvo Laser 3D Printer Studio</title>
+    <meta name="description" content="Interactive 3D CAD assembly, real-time vector path optimization, optical layer calibration, and Arduino stepper firmware studio for a low-cost DIY galvo laser 3D printing prototype." />
+    <meta property="og:title" content="GalvoProto CAD — Low-Cost Arduino & Stepper Galvo Laser 3D Printer Studio" />
+    <meta property="og:description" content="Interactive 3D CAD assembly, real-time vector path optimization, optical layer calibration, and Arduino stepper firmware studio for a low-cost DIY galvo laser 3D printing prototype." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <script type="module" crossorigin src="./assets/index-1F_T7xON.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-DaFLFU0I.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
+
