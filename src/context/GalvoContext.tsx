@@ -216,8 +216,7 @@ export function GalvoProvider({ children }: { children: ReactNode }) {
       setCadStatus(`Ready: ${sliced.length} layers sliced.`);
     } catch (err: any) {
       console.error("CAD Slicing Error:", err);
-      alert(`Error loading/slicing CAD file: ${err.message || err}`);
-      setCadStatus(`Error: ${err.message || err}`);
+      setCadStatus(`Error loading/slicing CAD file: ${err.message || err}`);
     } finally {
       setIsLoadingCad(false);
     }
@@ -235,7 +234,7 @@ export function GalvoProvider({ children }: { children: ReactNode }) {
       await loadAndSliceCad(file);
     } catch (err: any) {
       console.error(err);
-      alert(`Could not load sample: ${err.message}`);
+      setCadStatus(`Could not load sample: ${err.message}`);
       setIsLoadingCad(false);
     }
   };

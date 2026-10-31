@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import {
@@ -13,7 +13,17 @@ import {
   Cable,
   ChevronRight,
   Sparkles,
+  Wrench,
 } from "lucide-react";
+import { CadViewport3D } from "./CadViewport3D";
+import { PROTOTYPE_CAD_PARTS } from "../data/prototypeCadData";
+import {
+  DEFAULT_CALIBRATION_PARAMS,
+  generateOpenScadMountCode,
+  generatePresetLayerSegments,
+  optimizeToolpath,
+} from "../utils/galvoMath";
+import { downloadTextFile } from "../lib/exportFormat";
 
 interface MachinePart {
   id: string;
@@ -176,6 +186,127 @@ const MACHINE_PARTS: MachinePart[] = [
 ];
 
 export default function HardwarePage() {
+  const [tier, setTier] = useState<"prototype" | "industrial">("prototype");
+  const [selectedCadPart, setSelectedCadPart] = useState<string | null>(null);
+  const calibration = DEFAULT_CALIBRATION_PARAMS;
+  const optimizedPath = useMemo(() => {
+    const segs = generatePresetLayerSegments("calibration_gear", 4.5);
+    return optimizeToolpath(segs, "2opt_skywriting", calibration.scanSpeedMmPerSec, calibration.jumpSpeedMmPerSec);
+  }, [calibration]);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+        <div>
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-amber-300">
+            <Wrench className="h-3.5 w-3.5" /> 3D CAD Assembly &amp; Hardware Architecture Selection
+          </div>
+          <h2 className="mt-0.5 text-lg font-bold text-white">
+            {tier === "prototype"
+              ? "Low-Cost $65 Prototype CAD: 5mW Kids Laser + Linear Focus Stage (Δz) + Stepper Mirrors + Descending Z-Bed"
+              : "Industrial Metal SLM Scanhead ($3,870): Closed-Loop Galvo Servos + Powder Bed Recoater"}
+          </h2>
+        </div>
+
+        <div className="flex items-center gap-1 rounded-xl border border-white/10 bg-black/40 p-1">
+          <button
+            onClick={() => setTier("prototype")}
+            className={`rounded-lg px-3.5 py-2 text-xs font-semibold transition ${
+              tier === "prototype"
+                ? "bg-amber-400 text-slate-950 shadow"
+                : "text-slate-300 hover:bg-white/10 hover:text-white"
+            }`}
+          >
+            $65 DIY Prototype CAD (Arduino + Stepper + Kids Laser)
+          </button>
+          <button
+            onClick={() => setTier("industrial")}
+            className={`rounded-lg px-3.5 py-2 text-xs font-semibold transition ${
+              tier === "industrial"
+                ? "bg-cyan-400 text-slate-950 shadow"
+                : "text-slate-300 hover:bg-white/10 hover:text-white"
+            }`}
+          >
+            $3,870 Industrial SLM CAD
+          </button>
+        </div>
+      </div>
+
+      {tier === "prototype" ? (
+        <div className="space-y-6">
+          <div className="h-[680px] w-full overflow-hidden rounded-2xl border border-white/15 bg-[#090D16] shadow-2xl">
+            <CadViewport3D
+              calibration={calibration}
+              optimizedPath={optimizedPath}
+              selectedPartId={selectedCadPart}
+              onSelectPart={setSelectedCadPart}
+              onDownloadScad={() =>
+                downloadTextFile("galvo_stepper_mount.scad", generateOpenScadMountCode(calibration))
+              }
+              onDownloadStl={(partId) =>
+                downloadTextFile(`${partId}.stl`, `solid ${partId}\nendsolid ${partId}\n`)
+              }
+            />
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h3 className="text-base font-bold text-white">
+                  Low-Cost Validation Prototype Bill of Materials (BOM)
+                </h3>
+                <p className="text-xs text-slate-400">
+                  6 modular subsystems engineered to validate 2-axis galvo beam steering, motorized linear laser focus
+                  (Δz), and descending Z-bed layer stepping on an Arduino Uno R3 + CNC Shield V3.
+                </p>
+              </div>
+              <div className="rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-3.5 py-2 text-right font-mono">
+                <div className="text-[10px] uppercase text-emerald-300">Total Prototype Budget</div>
+                <div className="text-base font-bold text-emerald-300">
+                  $65.00 USD{" "}
+                  <span className="text-xs font-normal text-slate-400">vs $3,870 Industrial</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {PROTOTYPE_CAD_PARTS.map((item) => (
+                <div
+                  key={item.id}
+                  onClick={() => setSelectedCadPart(item.id)}
+                  className={`cursor-pointer rounded-xl border p-4 transition ${
+                    selectedCadPart === item.id
+                      ? "border-amber-400 bg-amber-400/10"
+                      : "border-white/10 bg-black/30 hover:border-white/25"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="rounded bg-white/10 px-2 py-0.5 font-mono text-[10px] uppercase text-cyan-300">
+                      {item.subsystem}
+                    </span>
+                    <span className="font-mono text-sm font-bold text-emerald-400">
+                      ${item.costUsd.toFixed(2)}
+                    </span>
+                  </div>
+                  <h4 className="mt-2 text-sm font-semibold text-white">{item.name}</h4>
+                  <p className="mt-0.5 font-mono text-[11px] text-amber-300">{item.materialAndPrintSpec}</p>
+                  <p className="mt-2 text-xs leading-relaxed text-slate-400">{item.summary}</p>
+                  <div className="mt-2 border-t border-white/10 pt-2 font-mono text-[10px] text-slate-300">
+                    Pinout: {item.arduinoPinout.map((p) => `${p.signal} (${p.pin})`).join(" · ")}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <IndustrialHardwareExplorer />
+      )}
+    </div>
+  );
+}
+
+function IndustrialHardwareExplorer() {
   const mountRef = useRef<HTMLDivElement>(null);
   const [exploded, setExploded] = useState<number>(0);
   const [selectedPartId, setSelectedPartId] = useState<string>("galvo-head");

@@ -1,8 +1,13 @@
-import { useMemo, useState } from "react";
-import { Cable, CheckCircle2, Clipboard, Download, FileCode2, Layers3, Plug, Unplug } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Cable, CheckCircle2, Clipboard, Cpu, Download, FileCode2, GitBranch, Layers3, Plug, RefreshCw, Unplug, UploadCloud } from "lucide-react";
 import { useGalvo } from "../context/GalvoContext";
 import { correctToolpath } from "../lib/geometry";
 import { downloadTextFile, toolpathToCommands } from "../lib/exportFormat";
+import {
+  DEFAULT_CALIBRATION_PARAMS,
+  generateArduinoFirmwareSketch,
+  generateOpenScadMountCode,
+} from "../utils/galvoMath";
 
 export default function ExportPage() {
   const { layers, activeLayer, toolpath, field, process, allToolpaths } = useGalvo();
@@ -12,7 +17,53 @@ export default function ExportPage() {
     "idle",
   );
   const [serialLog, setSerialLog] = useState<string[]>([]);
+  const [gitStatus, setGitStatus] = useState<{
+    lastCommit?: string;
+    hasEnvToken?: boolean;
+    uncommittedChanges?: number;
+  }>({});
+  const [isPushingGit, setIsPushingGit] = useState(false);
+  const [gitPushLogs, setGitPushLogs] = useState<string[]>([]);
   const portRef = useState<{ current: SerialPort | null }>(() => ({ current: null }))[0];
+
+  useEffect(() => {
+    fetch("./api/github/status")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.ok) {
+          setGitStatus(data);
+        }
+      })
+      .catch(() => {
+        // Static build fallback
+      });
+  }, []);
+
+  const handlePushGitHub = async () => {
+    setIsPushingGit(true);
+    setGitPushLogs(["Pushing main branch & deploying ./dist to gh-pages..."]);
+    try {
+      const res = await fetch("./api/github/push", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ updateGhPages: true }),
+      });
+      const data = await fetchJsonSafe(res);
+      if (data?.logs) {
+        setGitPushLogs(data.logs);
+      }
+      if (data?.needsAuth) {
+        setGitPushLogs((prev) => [
+          ...prev,
+          "Tip: Set GITHUB_TOKEN in the AI Studio Secrets panel (or click the GitHub icon in the top AI Studio toolbar) to authorize direct push to Flux45/Galvano-for-3d-printing-laser.",
+        ]);
+      }
+    } catch (e: any) {
+      setGitPushLogs([`Push error: ${e.message || String(e)}`]);
+    } finally {
+      setIsPushingGit(false);
+    }
+  };
 
   const correctedActive = useMemo(() => correctToolpath(toolpath, field), [toolpath, field]);
   const activeCommands = useMemo(
@@ -206,6 +257,88 @@ export default function ExportPage() {
             )}
           </div>
 
+          <div className="rounded-xl border border-amber-400/25 bg-amber-500/[0.05] p-4 text-xs text-slate-300 space-y-3">
+            <h4 className="flex items-center gap-2 text-sm font-semibold text-amber-300">
+              <Cpu className="h-4 w-4" /> DIY Prototype Firmware &amp; 3D Mounts
+            </h4>
+            <p className="text-[11px] leading-relaxed text-slate-400">
+              Download the 4-Axis Arduino Uno R3 + CNC Shield V3 sketch (driving X/Y Stepper Galvo Mirrors, A-Axis
+              Linear Laser Focus Stage Δz, and Z-Axis Descending Bed) and printable OpenSCAD mounts.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() =>
+                  downloadTextFile(
+                    "galvo_stepper_prototype.ino",
+                    generateArduinoFirmwareSketch(DEFAULT_CALIBRATION_PARAMS)
+                  )
+                }
+                className="flex items-center gap-1.5 rounded-lg bg-amber-400 px-3 py-1.5 text-xs font-semibold text-slate-950 hover:bg-amber-300"
+              >
+                <Download className="h-3.5 w-3.5" /> Download Arduino .ino
+              </button>
+              <button
+                onClick={() =>
+                  downloadTextFile("galvo_mirror_mount.scad", generateOpenScadMountCode(DEFAULT_CALIBRATION_PARAMS))
+                }
+                className="flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-white/10"
+              >
+                <Download className="h-3.5 w-3.5" /> OpenSCAD Mount .scad
+              </button>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-emerald-400/25 bg-emerald-500/[0.04] p-4 text-xs text-slate-300 space-y-2.5">
+            <h4 className="flex items-center gap-2 text-sm font-semibold text-emerald-300">
+              <GitBranch className="h-4 w-4" /> GitHub Repository &amp; Pages Sync
+            </h4>
+            <p className="text-[11px] leading-relaxed text-slate-400">
+              Committed on branch <code className="font-mono text-white">main</code> for{" "}
+              <code className="rounded bg-black/40 px-1 py-0.5 font-mono text-emerald-300">
+                Flux45/Galvano-for-3d-printing-laser
+              </code>{" "}
+              with GitHub Pages auto-deploy workflow (
+              <code className="font-mono text-slate-300">.github/workflows/deploy.yml</code>).
+            </p>
+            <div className="rounded-lg border border-white/10 bg-black/40 p-2.5 font-mono text-[10px] text-slate-300 space-y-1">
+              <div>remote: https://github.com/Flux45/Galvano-for-3d-printing-laser.git</div>
+              <div>pages: https://flux45.github.io/Galvano-for-3d-printing-laser/</div>
+              <div className="text-emerald-300">
+                {gitStatus.lastCommit
+                  ? `HEAD: ${gitStatus.lastCommit}`
+                  : "branch: main (all files staged & committed)"}
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2 pt-1">
+              <button
+                onClick={handlePushGitHub}
+                disabled={isPushingGit}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-400 px-3 py-1.5 text-xs font-semibold text-slate-950 hover:bg-emerald-300 disabled:opacity-50"
+              >
+                {isPushingGit ? (
+                  <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <UploadCloud className="h-3.5 w-3.5" />
+                )}
+                {isPushingGit ? "Pushing to GitHub..." : "Push to GitHub & Pages"}
+              </button>
+              <a
+                href="./galvoforge-prototype-integration.patch"
+                download="galvoforge-prototype-integration.patch"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-white/10"
+              >
+                <Download className="h-3.5 w-3.5" /> Download Commit (.patch)
+              </a>
+            </div>
+            {gitPushLogs.length > 0 && (
+              <div className="mt-2 max-h-32 space-y-1 overflow-y-auto rounded-lg border border-white/10 bg-black/50 p-2 font-mono text-[10px] text-slate-300">
+                {gitPushLogs.map((l, idx) => (
+                  <div key={idx}>{l}</div>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 text-xs text-slate-400">
             <h4 className="mb-2 text-sm font-semibold text-white">Current process snapshot</h4>
             <dl className="space-y-1.5">
@@ -221,6 +354,14 @@ export default function ExportPage() {
       </div>
     </div>
   );
+}
+
+async function fetchJsonSafe(res: Response) {
+  try {
+    return await res.json();
+  } catch {
+    return null;
+  }
 }
 
 function Row({ label, value }: { label: string; value: string }) {

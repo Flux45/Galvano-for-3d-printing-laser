@@ -93,7 +93,17 @@ const PROS_CONS = {
   ],
 };
 
-export default function OverviewPage({ onLaunch }: { onLaunch: () => void }) {
+export default function OverviewPage({
+  onLaunch,
+  onOpenPrototype,
+  onOpenOptimizer,
+  onOpenCalibration,
+}: {
+  onLaunch: () => void;
+  onOpenPrototype?: () => void;
+  onOpenOptimizer?: () => void;
+  onOpenCalibration?: () => void;
+}) {
   return (
     <div className="space-y-12">
       <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900 via-slate-900 to-cyan-950 p-6 sm:p-10">
@@ -102,28 +112,101 @@ export default function OverviewPage({ onLaunch }: { onLaunch: () => void }) {
         <div className="relative grid gap-8 lg:grid-cols-[1.3fr_1fr] lg:items-center">
           <div className="space-y-5">
             <span className="inline-flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-300">
-              <ScanLine className="h-3.5 w-3.5" /> Galvanometer-based Laser SLA
+              <ScanLine className="h-3.5 w-3.5" /> Galvanometer-based Laser SLA &amp; DIY Stepper Prototype
             </span>
             <h2 className="text-3xl font-bold leading-tight tracking-tight text-white sm:text-4xl">
-              Build a galvo laser scanner for your resin 3D printer — and drive it with real toolpath software.
+              Build a galvo laser scanner for your 3D printer — and validate it with a $65 Arduino + Stepper prototype.
             </h2>
             <p className="max-w-xl text-sm leading-relaxed text-slate-300 sm:text-base">
-              A "galvano" (galvanometer scanner) steers a focused UV laser beam with two fast mirrors instead of
-              projecting a masked image. That turns your printer into a <em>vector</em> SLA machine: every layer is
-              drawn as outlines + fill lines, line by line, at laser-spot resolution. Below is the hardware anatomy,
-              the software pipeline, and a working toolpath studio you can use right now to design, simulate and
-              export scan data.
+              A "galvano" (galvanometer scanner) steers a focused laser beam with two orthogonal mirrors instead of
+              projecting a masked image. Now featuring our{" "}
+              <strong className="text-amber-300">
+                Low-Cost 4-Axis Prototype CAD (5mW Kids Laser with Motorized Linear Focus Stage Δz, Stepper Galvo
+                Mirrors, Descending Z-Bed Elevator, and Arduino Uno R3 + CNC Shield V3)
+              </strong>
+              , <strong className="text-cyan-300">Real-Time 2-Opt + Corner Skywriting Path Optimization</strong>, and{" "}
+              <strong className="text-emerald-300">Multi-Layer Z-Stage &amp; Stepper Backlash Calibration</strong>.
             </p>
-            <button
-              onClick={onLaunch}
-              className="group inline-flex items-center gap-2 rounded-xl bg-cyan-400 px-5 py-2.5 text-sm font-semibold text-slate-900 shadow-lg shadow-cyan-500/20 transition hover:bg-cyan-300"
-            >
-              Open the Toolpath Studio
-              <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
-            </button>
+            <div className="flex flex-wrap items-center gap-3">
+              {onOpenPrototype && (
+                <button
+                  onClick={onOpenPrototype}
+                  className="group inline-flex items-center gap-2 rounded-xl bg-amber-400 px-5 py-2.5 text-sm font-semibold text-slate-950 shadow-lg shadow-amber-500/20 transition hover:bg-amber-300"
+                >
+                  Open $65 DIY Prototype 3D CAD
+                  <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+                </button>
+              )}
+              <button
+                onClick={onLaunch}
+                className="group inline-flex items-center gap-2 rounded-xl bg-cyan-400 px-5 py-2.5 text-sm font-semibold text-slate-900 shadow-lg shadow-cyan-500/20 transition hover:bg-cyan-300"
+              >
+                Open Toolpath Studio
+                <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+              </button>
+              {onOpenOptimizer && (
+                <button
+                  onClick={onOpenOptimizer}
+                  className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm font-medium text-slate-200 transition hover:bg-white/10"
+                >
+                  Real-Time Path Optimizer
+                </button>
+              )}
+              {onOpenCalibration && (
+                <button
+                  onClick={onOpenCalibration}
+                  className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm font-medium text-slate-200 transition hover:bg-white/10"
+                >
+                  Layer Calibration &amp; Arduino Firmware
+                </button>
+              )}
+            </div>
           </div>
           <div className="relative mx-auto aspect-square w-full max-w-sm">
             <GalvoDiagram />
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-amber-400/25 bg-gradient-to-r from-amber-500/[0.07] via-slate-900/80 to-cyan-500/[0.07] p-6">
+        <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
+          <div className="space-y-1.5">
+            <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-amber-300">
+              <Cpu className="h-4 w-4" /> New: Low-Cost 4-Axis Prototype Validation Architecture ($65 Total BOM)
+            </div>
+            <h3 className="text-lg font-bold text-white">
+              Motorized Linear Laser Focus Stage (Δz) + Orthogonal Stepper Mirrors + Descending Z-Bed (-Z)
+            </h3>
+            <p className="max-w-3xl text-sm text-slate-300">
+              Validate core galvo motion mechanics, dynamic flat-field focus compensation{" "}
+              <code className="rounded bg-black/40 px-1.5 py-0.5 font-mono text-xs text-amber-300">
+                Δz = √(L₀² + x² + y²) - L₀
+              </code>{" "}
+              without an expensive F-theta lens, descending Z-platform layer stepping, and Arduino Uno CNC Shield V3
+              firmware before investing $3,870 in industrial hardware.
+            </p>
+          </div>
+          <div className="grid shrink-0 grid-cols-2 gap-2.5 sm:grid-cols-4">
+            <div className="rounded-xl border border-white/10 bg-black/30 p-3">
+              <div className="text-[11px] text-slate-400">Laser Focus Axis</div>
+              <div className="mt-0.5 font-mono text-sm font-bold text-amber-300">A-Axis (D12/D13)</div>
+              <div className="text-[10px] text-slate-500">Linear Δz carriage</div>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-black/30 p-3">
+              <div className="text-[11px] text-slate-400">Build Platform</div>
+              <div className="mt-0.5 font-mono text-sm font-bold text-emerald-300">Z-Axis (D4/D7)</div>
+              <div className="text-[10px] text-slate-500">Descending -Z bed</div>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-black/30 p-3">
+              <div className="text-[11px] text-slate-400">2-Opt Optimizer</div>
+              <div className="mt-0.5 font-mono text-sm font-bold text-cyan-300">-58% Air Jumps</div>
+              <div className="text-[10px] text-slate-500">+ Corner Skywriting</div>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-black/30 p-3">
+              <div className="text-[11px] text-slate-400">Prototype Cost</div>
+              <div className="mt-0.5 font-mono text-sm font-bold text-white">$65.00 USD</div>
+              <div className="text-[10px] text-emerald-400">-98.3% vs Industrial</div>
+            </div>
           </div>
         </div>
       </section>

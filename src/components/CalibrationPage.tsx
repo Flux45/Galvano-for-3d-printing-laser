@@ -1,12 +1,27 @@
-import { useEffect, useRef } from "react";
-import { Crosshair, Info } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Crosshair, Info, Layers } from "lucide-react";
 import { useGalvo } from "../context/GalvoContext";
 import { applyFieldCorrection } from "../lib/geometry";
+import { CalibrationAndFirmwareLab } from "./CalibrationAndFirmwareLab";
+import {
+  DEFAULT_CALIBRATION_PARAMS,
+  generateOpenScadMountCode,
+  generatePresetLayerSegments,
+  optimizeToolpath,
+  type CalibrationParams,
+  type StepperMode,
+} from "../utils/galvoMath";
+import { downloadTextFile } from "../lib/exportFormat";
 
 const SIZE = 520;
 
 export default function CalibrationPage() {
   const { field, setField } = useGalvo();
+  const [calibration, setCalibration] = useState<CalibrationParams>(DEFAULT_CALIBRATION_PARAMS);
+  const optimizedPath = useMemo(() => {
+    const segs = generatePresetLayerSegments("calibration_gear", 4.5);
+    return optimizeToolpath(segs, "2opt_skywriting", calibration.scanSpeedMmPerSec, calibration.jumpSpeedMmPerSec);
+  }, [calibration]);
   const rawRef = useRef<HTMLCanvasElement>(null);
   const correctedRef = useRef<HTMLCanvasElement>(null);
 
@@ -168,6 +183,44 @@ export default function CalibrationPage() {
           <li>Bake the correction into firmware/software so every future job is pre-warped automatically.</li>
           <li>Re-validate after any mechanical disturbance to the laser/mirror/lens stack.</li>
         </ol>
+      </div>
+
+      <div className="space-y-4 border-t border-white/10 pt-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="flex items-center gap-2 text-xl font-semibold text-white">
+              <Layers className="h-5 w-5 text-amber-300" /> Multi-Layer Z-Stage, Stepper Backlash &amp; Arduino Firmware Lab
+            </h2>
+            <p className="mt-1 text-sm text-slate-400">
+              Configure 4-axis dynamic focus (Δz), descending Z-bed layer stepping, directional stepper backlash
+              compensation, and export ready-to-flash Arduino Uno R3 (.ino) and OpenSCAD (.scad) files.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <select
+              value={calibration.stepperMode}
+              onChange={(e) => setCalibration((prev) => ({ ...prev, stepperMode: e.target.value as StepperMode }))}
+              className="rounded-lg border border-white/15 bg-slate-900 px-3 py-1.5 font-mono text-xs text-slate-200"
+            >
+              <option value="nema17_32x_belt3x">NEMA17 1/32 + 3:1 GT2 Belt (0.0187°/step)</option>
+              <option value="nema17_16x">NEMA17 Direct 1/16 (0.1125°/step)</option>
+              <option value="28byj48_half">28BYJ-48 ULN2003 Half-Step (0.0879°/step)</option>
+            </select>
+          </div>
+        </div>
+        <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#090D16]">
+          <CalibrationAndFirmwareLab
+            calibration={calibration}
+            onChangeCalibration={setCalibration}
+            optimizedPath={optimizedPath}
+            onDownloadScad={() =>
+              downloadTextFile("galvo_stepper_mount.scad", generateOpenScadMountCode(calibration))
+            }
+            onDownloadStl={(partId) =>
+              downloadTextFile(`${partId}.stl`, `solid ${partId}\nendsolid ${partId}\n`)
+            }
+          />
+        </div>
       </div>
     </div>
   );

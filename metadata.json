@@ -1,0 +1,6 @@
+{
+  "name": "GalvoProto CAD — Low-Cost Arduino & Stepper Galvo Laser 3D Printer Studio",
+  "description": "Interactive 3D CAD assembly, real-time vector path optimization, optical layer calibration, and Arduino stepper firmware studio for a low-cost DIY galvo laser 3D printing prototype.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
